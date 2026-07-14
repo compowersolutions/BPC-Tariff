@@ -230,7 +230,10 @@ function AuthGate({ children }) {
 
   const handleGoogleAuth = async () => {
     setAuthError("");
-    await supabase.auth.signInWithOAuth({ provider: "google" });
+    await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: window.location.origin },
+    });
   };
 
   if (session === undefined) {
