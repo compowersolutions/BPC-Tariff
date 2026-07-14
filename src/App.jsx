@@ -10,6 +10,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { createClient } from "@supabase/supabase-js";
+import "./App.css";
 
 /* ---------------------------------------------------------------
    SUPABASE CONFIG — now read from environment variables, NOT
@@ -110,11 +111,11 @@ const TARIFFS = {
 const TOU_KEYS = Object.keys(TARIFFS);
 const TOU_COLORS = {
   TOU4: "#F2A93B",
-  TOU6: "#4FD1C5",
+  TOU6: "#00A99A",
   TOU7: "#8A6FD6",
   TOU8L: "#E8546A",
-  TOU8M: "#5FA8E0",
-  TOU2: "#B7D65B",
+  TOU8M: "#3E7CB1",
+  TOU2: "#7CA23C",
   TOU1: "#E0894F",
 };
 
@@ -204,6 +205,16 @@ const fmt = (n) =>
   "P" +
   (n || 0).toLocaleString("en-BW", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
+// Compact large numbers to at most 3 significant digits + K (e.g. 12345 -> "12.3K",
+// 100000 -> "100K") — keeps axis ticks and slider labels from crowding the layout.
+const formatK = (n) => {
+  const abs = Math.abs(n);
+  if (abs < 1000) return String(Math.round(n));
+  let s = (n / 1000).toPrecision(3);
+  if (s.includes(".")) s = s.replace(/0+$/, "").replace(/\.$/, "");
+  return s + "K";
+};
+
 function AuthGate({ children }) {
   const [session, setSession] = useState(undefined); // undefined = loading, null = signed out
   const [authMode, setAuthMode] = useState("login"); // 'login' | 'signup'
@@ -237,40 +248,62 @@ function AuthGate({ children }) {
   };
 
   if (session === undefined) {
-    return <div style={styles.authWrap}><div style={styles.authCard}>Loading…</div></div>;
+    return (
+      <div className="auth-wrap">
+        <style>{fontImports}</style>
+        <div className="auth-card">Loading…</div>
+      </div>
+    );
   }
 
   if (!session) {
     return (
-      <div style={styles.authWrap}>
-        <div style={styles.authCard}>
-          <div style={styles.eyebrow}>BPC TARIFF CALCULATOR</div>
-          <h1 style={styles.h1}>{authMode === "login" ? "Log in" : "Create account"}</h1>
+      <div className="auth-wrap">
+        <style>{fontImports}</style>
+        <div className="auth-card">
+          <div className="eyebrow">BPC TARIFF CALCULATOR</div>
+          <h1 className="h1" style={{ marginBottom: 20 }}>
+            {authMode === "login" ? "Log in" : "Create account"}
+          </h1>
           <form onSubmit={handleEmailAuth}>
-            <label style={styles.field}>
-              <span style={styles.fieldLabel}>Email</span>
-              <input style={styles.input} type="email" required value={email}
-                onChange={(e) => setEmail(e.target.value)} />
+            <label className="field">
+              <span className="field-label">Email</span>
+              <input
+                className="input"
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
             </label>
-            <label style={styles.field}>
-              <span style={styles.fieldLabel}>Password</span>
-              <input style={styles.input} type="password" required value={password}
-                onChange={(e) => setPassword(e.target.value)} />
+            <label className="field">
+              <span className="field-label">Password</span>
+              <input
+                className="input"
+                type="password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
             </label>
-            {authError && <div style={styles.warnBad}>{authError}</div>}
-            <button type="submit" style={styles.modeBtnActive} disabled={authBusy}>
+            {authError && <div className="warn-bad">{authError}</div>}
+            <button type="submit" className="btn btn-primary btn-block" disabled={authBusy}>
               {authMode === "login" ? "Log in" : "Sign up"}
             </button>
           </form>
-          <button style={{ ...styles.modeBtn, marginTop: 10, width: "100%" }} onClick={handleGoogleAuth}>
+          <button
+            className="btn btn-outline btn-block"
+            style={{ marginTop: 10 }}
+            onClick={handleGoogleAuth}
+          >
             Continue with Google
           </button>
-          <div style={styles.validationLine}>
+          <div className="validation-line" style={{ marginTop: 16, fontSize: 12.5 }}>
             {authMode === "login" ? "No account yet? " : "Already have an account? "}
             <a
               href="#"
               onClick={(e) => { e.preventDefault(); setAuthMode(authMode === "login" ? "signup" : "login"); }}
-              style={{ color: "#F2A93B" }}
+              className="link-accent"
             >
               {authMode === "login" ? "Sign up" : "Log in"}
             </a>
@@ -286,20 +319,32 @@ function AuthGate({ children }) {
 export default function App() {
   if (!supabaseConfigured) {
     return (
-      <div style={styles.authWrap}>
-        <div style={styles.authCard}>
-          <div style={styles.eyebrow}>SETUP NEEDED</div>
-          <h1 style={styles.h1}>Supabase config missing</h1>
-          <p style={{ color: "#9FB3C8", fontSize: 13, lineHeight: 1.6 }}>
+      <div className="auth-wrap">
+        <style>{fontImports}</style>
+        <div className="auth-card">
+          <div className="eyebrow">SETUP NEEDED</div>
+          <h1 className="h1" style={{ marginBottom: 14 }}>Supabase config missing</h1>
+          <p style={{ color: "var(--muted-foreground)", fontSize: 13, lineHeight: 1.6 }}>
             Create a <code>.env.local</code> file in your project root (next to{" "}
             <code>package.json</code>) with:
           </p>
-          <pre style={{ background: "#0C1622", padding: 12, borderRadius: 6, fontSize: 12, color: "#9FB3C8", overflowX: "auto" }}>
+          <pre
+            style={{
+              background: "var(--muted)",
+              padding: 12,
+              borderRadius: 8,
+              fontSize: 12,
+              color: "var(--foreground)",
+              overflowX: "auto",
+            }}
+          >
 {`VITE_SUPABASE_URL=https://xxxxxxxxxxxx.supabase.co
 VITE_SUPABASE_ANON_KEY=your-anon-public-key
 VITE_SETUP_PASSWORD=your-chosen-password`}
           </pre>
-          <p style={{ color: "#9FB3C8", fontSize: 13 }}>Then restart <code>npm run dev</code>.</p>
+          <p style={{ color: "var(--muted-foreground)", fontSize: 13 }}>
+            Then restart <code>npm run dev</code>.
+          </p>
         </div>
       </div>
     );
@@ -419,9 +464,7 @@ function Calculator({ session }) {
   const [maxKWh, setMaxKWh] = useState(30000);
   const [selectedTOUs, setSelectedTOUs] = useState(["TOU7", "TOU8L"]);
   const [selectedMetrics, setSelectedMetrics] = useState(["total"]);
-  const [xAxisMode, setXAxisMode] = useState("kwh"); // 'kwh' | 'demand'
-  const [maxDemandAxis, setMaxDemandAxis] = useState(500);
-  const [chartDemandKW, setChartDemandKW] = useState(50); // DM charge slider — demand (kW) assumption used when X-axis = kWh consumed
+  const [chartDemandKW, setChartDemandKW] = useState(50); // DM charge slider — demand (kW) assumption used for the chart
   const [yAxisMax, setYAxisMax] = useState(50000); // vertical (Y-axis) range slider — Pula
 
   const derivedKWh =
@@ -504,99 +547,84 @@ function Calculator({ session }) {
   const chartData = useMemo(() => {
     const points = 60; // fixed plotting resolution
     const rows = [];
-    if (xAxisMode === "kwh") {
-      const step = maxKWh / points;
-      for (let i = 0; i <= points; i++) {
-        const kWh = Math.round(i * step);
-        const row = { x: kWh };
-        selectedTOUs.forEach((tk) => {
-          const b = computeBill(tk, kWh, chartDemandKW);
-          if (!b) return;
-          selectedMetrics.forEach((m) => {
-            row[`${tk}__${m}`] = Math.round(toChartValue(b, m) * 100) / 100;
-          });
+    const step = maxKWh / points;
+    for (let i = 0; i <= points; i++) {
+      const kWh = Math.round(i * step);
+      const row = { x: kWh };
+      selectedTOUs.forEach((tk) => {
+        const b = computeBill(tk, kWh, chartDemandKW);
+        if (!b) return;
+        selectedMetrics.forEach((m) => {
+          row[`${tk}__${m}`] = Math.round(toChartValue(b, m) * 100) / 100;
         });
-        rows.push(row);
-      }
-    } else {
-      // xAxisMode === 'demand': kWh held fixed, demand (kW) varies
-      const step = maxDemandAxis / points;
-      for (let i = 0; i <= points; i++) {
-        const dm = Math.round(i * step * 1000) / 1000;
-        const row = { x: dm };
-        selectedTOUs.forEach((tk) => {
-          const b = computeBill(tk, derivedKWh, dm);
-          if (!b) return;
-          selectedMetrics.forEach((m) => {
-            row[`${tk}__${m}`] = Math.round(toChartValue(b, m) * 100) / 100;
-          });
-        });
-        rows.push(row);
-      }
+      });
+      rows.push(row);
     }
     return rows;
-  }, [maxKWh, maxDemandAxis, xAxisMode, selectedTOUs, selectedMetrics, chartDemandKW, derivedKWh]);
+  }, [maxKWh, selectedTOUs, selectedMetrics, chartDemandKW]);
 
   return (
-    <div style={styles.app}>
+    <div className="app">
       <style>{fontImports}</style>
-      <header style={styles.header}>
-        <div style={styles.headerLeft}>
-          <div style={styles.boltMark}>⚡</div>
+      <header className="header">
+        <div className="header-left">
+          <div className="bolt-mark">⚡</div>
           <div>
-            <div style={styles.eyebrow}>MILLENIUM OPTIONS · TARIFF DESK</div>
-            <h1 style={styles.h1}>BPC Tariff Calculator</h1>
+            <div className="eyebrow">MILLENIUM OPTIONS · TARIFF DESK</div>
+            <h1 className="h1">BPC Tariff Calculator</h1>
           </div>
         </div>
-        <div style={styles.headerRight}>1 JULY 2025 SCHEDULE · VAT INCLUSIVE</div>
-        <button style={{ ...styles.modeBtn, marginLeft: 12 }} onClick={() => supabase.auth.signOut()}>
-          Log out ({session.user.email})
-        </button>
+        <div className="header-actions">
+          <div className="header-right">1 JULY 2025 SCHEDULE · VAT INCLUSIVE</div>
+          <button className="btn btn-outline btn-sm" onClick={() => supabase.auth.signOut()}>
+            Log out ({session.user.email})
+          </button>
+        </div>
       </header>
 
       {/* ---------------- MAXIMUM DEMAND RATCHET PANEL ---------------- */}
-      <section style={styles.panel}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-          <h2 style={{ ...styles.panelTitle, margin: 0 }}>Maximum Demand Ratchet</h2>
-          <button style={styles.modeBtn} onClick={() => setShowSetup((s) => !s)}>
+      <section className="panel">
+        <div className="panel-head-row">
+          <h2 className="panel-title">Maximum Demand Ratchet</h2>
+          <button className="btn btn-outline btn-sm" onClick={() => setShowSetup((s) => !s)}>
             {showSetup ? "Hide setup" : "Setup"}
           </button>
         </div>
 
-        <div style={styles.validationLine}>
+        <div className="validation-line">
           Ratchet: <b>{ratchetPct}%</b> of the highest reading in the trailing{" "}
           <b>{mdWindow}-month</b> window &nbsp;·&nbsp; Window used this calc:{" "}
           <b>{effectiveWindow} months</b> ({ratchetResult.mode.replace(/-/g, " ")})
         </div>
-        <div style={styles.validationLine}>
+        <div className="validation-line">
           Ratchet floor = <b>{ratchetResult.floor.toFixed(3)} kW</b> &nbsp;→&nbsp; Billed demand ={" "}
           <b>max({demandVal.toFixed(3)}, {ratchetResult.floor.toFixed(3)}) = {billedDemand.toFixed(3)} kW</b>
         </div>
 
         {showSetup && (
-          <div style={{ marginTop: 16, paddingTop: 16, borderTop: "1px solid #24374F" }}>
+          <div className="setup-section">
             {!setupUnlocked ? (
-              <div style={styles.meterRow}>
-                <label style={styles.field}>
-                  <span style={styles.fieldLabel}>Setup password</span>
+              <div className="meter-row">
+                <label className="field">
+                  <span className="field-label">Setup password</span>
                   <input
-                    style={styles.input}
+                    className="input"
                     type="password"
                     value={setupPasswordInput}
                     onChange={(e) => setSetupPasswordInput(e.target.value)}
                   />
                 </label>
-                <div style={{ display: "flex", alignItems: "flex-end" }}>
-                  <button style={styles.modeBtnActive} onClick={unlockSetup}>Unlock</button>
+                <div className="field-actions">
+                  <button className="btn btn-primary" onClick={unlockSetup}>Unlock</button>
                 </div>
-                {setupError && <div style={styles.warnBad}>{setupError}</div>}
+                {setupError && <div className="warn-bad">{setupError}</div>}
               </div>
             ) : (
-              <div style={styles.meterRow}>
-                <label style={styles.field}>
-                  <span style={styles.fieldLabel}>Ratchet % (default 90)</span>
+              <div className="meter-row">
+                <label className="field">
+                  <span className="field-label">Ratchet % (default 90)</span>
                   <input
-                    style={styles.input}
+                    className="input"
                     type="number"
                     min="0"
                     max="100"
@@ -604,10 +632,10 @@ function Calculator({ session }) {
                     onChange={(e) => setRatchetPct(parseFloat(e.target.value) || 0)}
                   />
                 </label>
-                <label style={styles.field}>
-                  <span style={styles.fieldLabel}>MD window</span>
+                <label className="field">
+                  <span className="field-label">MD window</span>
                   <select
-                    style={styles.input}
+                    className="input"
                     value={mdWindow}
                     onChange={(e) => setMdWindow(parseInt(e.target.value))}
                   >
@@ -615,58 +643,58 @@ function Calculator({ session }) {
                     <option value={12}>12 months</option>
                   </select>
                 </label>
-                <div style={{ gridColumn: "1 / -1" }}>
-                  <button style={styles.modeBtnActive} onClick={saveSetup}>Save setup</button>
+                <div className="field-full">
+                  <button className="btn btn-primary" onClick={saveSetup}>Save setup</button>
                 </div>
               </div>
             )}
 
-            <h3 style={{ ...styles.panelTitle, fontSize: 14, marginTop: 20 }}>Monthly MD history</h3>
+            <h3 className="panel-title" style={{ fontSize: 14, marginTop: 20 }}>Monthly MD history</h3>
             {historyLoading ? (
-              <div style={styles.validationLine}>Loading history…</div>
+              <div className="validation-line">Loading history…</div>
             ) : (
-              <table style={styles.billTable}>
+              <table className="data-table">
                 <tbody>
-                  <tr style={styles.billRowMuted}>
+                  <tr className="data-table-muted">
                     <td>MONTH</td>
-                    <td style={styles.billNum}>READING (kW)</td>
-                    <td style={styles.billNum}>BILLED (kW)</td>
+                    <td className="data-table-num">READING (kW)</td>
+                    <td className="data-table-num">BILLED (kW)</td>
                   </tr>
                   {mdHistory.length === 0 && (
-                    <tr><td colSpan={3} style={styles.billRowMuted}>No history saved yet — the manual "previous month" fields below will be used instead.</td></tr>
+                    <tr><td colSpan={3} className="data-table-muted">No history saved yet — the manual "previous month" fields below will be used instead.</td></tr>
                   )}
                   {mdHistory.map((h) => (
                     <tr key={h.month}>
                       <td>{h.month}</td>
-                      <td style={styles.billNum}>{Number(h.reading).toFixed(3)}</td>
-                      <td style={styles.billNum}>{Number(h.billed).toFixed(3)}</td>
+                      <td className="data-table-num">{Number(h.reading).toFixed(3)}</td>
+                      <td className="data-table-num">{Number(h.billed).toFixed(3)}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             )}
 
-            <div style={{ ...styles.meterRow, marginTop: 12 }}>
-              <label style={styles.field}>
-                <span style={styles.fieldLabel}>Add month (YYYY-MM)</span>
-                <input style={styles.input} placeholder="2026-07" value={newHistMonth}
+            <div className="meter-row" style={{ marginTop: 12 }}>
+              <label className="field">
+                <span className="field-label">Add month (YYYY-MM)</span>
+                <input className="input" placeholder="2026-07" value={newHistMonth}
                   onChange={(e) => setNewHistMonth(e.target.value)} />
               </label>
-              <label style={styles.field}>
-                <span style={styles.fieldLabel}>Reading (kW)</span>
-                <input style={styles.input} type="number" step="0.001" value={newHistReading}
+              <label className="field">
+                <span className="field-label">Reading (kW)</span>
+                <input className="input" type="number" step="0.001" value={newHistReading}
                   onChange={(e) => setNewHistReading(e.target.value)} />
               </label>
-              <label style={styles.field}>
-                <span style={styles.fieldLabel}>Billed (kW)</span>
-                <input style={styles.input} type="number" step="0.001" value={newHistBilled}
+              <label className="field">
+                <span className="field-label">Billed (kW)</span>
+                <input className="input" type="number" step="0.001" value={newHistBilled}
                   onChange={(e) => setNewHistBilled(e.target.value)} />
               </label>
-              <div style={{ display: "flex", alignItems: "flex-end" }}>
-                <button style={styles.modeBtnActive} onClick={addHistoryEntry}>Add to history</button>
+              <div className="field-actions">
+                <button className="btn btn-primary" onClick={addHistoryEntry}>Add to history</button>
               </div>
             </div>
-            <div style={styles.validationLine}>
+            <div className="validation-line">
               Tip: after computing this month's bill above, add {billingMonth} with reading{" "}
               {demandVal.toFixed(3)} and billed {billedDemand.toFixed(3)} to carry the ratchet forward.
             </div>
@@ -674,20 +702,20 @@ function Calculator({ session }) {
         )}
       </section>
 
-      <div style={styles.grid}>
+      <div className="grid">
         {/* ---------------- INPUT PANEL ---------------- */}
-        <section style={styles.panel}>
-          <h2 style={styles.panelTitle}>Consumption &amp; Category</h2>
+        <section className="panel panel-compact">
+          <h2 className="panel-title">Consumption &amp; Category</h2>
 
-          <div style={styles.modeSwitch}>
+          <div className="segmented">
             <button
-              style={mode === "kwh" ? styles.modeBtnActive : styles.modeBtn}
+              className={`segmented-btn${mode === "kwh" ? " active" : ""}`}
               onClick={() => setMode("kwh")}
             >
               Enter kWh
             </button>
             <button
-              style={mode === "meter" ? styles.modeBtnActive : styles.modeBtn}
+              className={`segmented-btn${mode === "meter" ? " active" : ""}`}
               onClick={() => setMode("meter")}
             >
               Enter meter readings
@@ -695,10 +723,10 @@ function Calculator({ session }) {
           </div>
 
           {mode === "kwh" ? (
-            <label style={styles.field}>
-              <span style={styles.fieldLabel}>kWh consumed</span>
+            <label className="field">
+              <span className="field-label">kWh consumed</span>
               <input
-                style={styles.input}
+                className="input"
                 type="number"
                 min="0"
                 value={kwhInput}
@@ -706,53 +734,53 @@ function Calculator({ session }) {
               />
             </label>
           ) : (
-            <div style={styles.meterRow}>
-              <label style={styles.field}>
-                <span style={styles.fieldLabel}>Meter #</span>
+            <div className="meter-row">
+              <label className="field">
+                <span className="field-label">Meter #</span>
                 <input
-                  style={styles.input}
+                  className="input"
                   value={meterNo}
                   onChange={(e) => setMeterNo(e.target.value)}
                 />
               </label>
-              <label style={styles.field}>
-                <span style={styles.fieldLabel}>Opening</span>
+              <label className="field">
+                <span className="field-label">Opening</span>
                 <input
-                  style={styles.input}
+                  className="input"
                   type="number"
                   value={opening}
                   onChange={(e) => setOpening(e.target.value)}
                 />
               </label>
-              <label style={styles.field}>
-                <span style={styles.fieldLabel}>Closing</span>
+              <label className="field">
+                <span className="field-label">Closing</span>
                 <input
-                  style={styles.input}
+                  className="input"
                   type="number"
                   value={closing}
                   onChange={(e) => setClosing(e.target.value)}
                 />
               </label>
-              <label style={styles.field}>
-                <span style={styles.fieldLabel}>Multiplier</span>
+              <label className="field">
+                <span className="field-label">Multiplier</span>
                 <input
-                  style={styles.input}
+                  className="input"
                   type="number"
                   value={multiplier}
                   onChange={(e) => setMultiplier(e.target.value)}
                 />
               </label>
-              <div style={styles.derivedKwh}>
+              <div className="derived-kwh">
                 kWh = ({closing || 0} − {opening || 0}) × {multiplier || 1} ={" "}
                 <b>{derivedKWh.toLocaleString()}</b>
               </div>
             </div>
           )}
 
-          <label style={styles.field}>
-            <span style={styles.fieldLabel}>Tariff category (TOU)</span>
+          <label className="field">
+            <span className="field-label">Tariff category (TOU)</span>
             <select
-              style={styles.input}
+              className="input"
               value={tariffKey}
               onChange={(e) => setTariffKey(e.target.value)}
             >
@@ -764,22 +792,22 @@ function Calculator({ session }) {
             </select>
           </label>
 
-          <div style={styles.meterRow}>
-            <label style={styles.field}>
-              <span style={styles.fieldLabel}>Billing month</span>
+          <div className="meter-row">
+            <label className="field">
+              <span className="field-label">Billing month</span>
               <input
-                style={styles.input}
+                className="input"
                 type="month"
                 value={billingMonth}
                 onChange={(e) => setBillingMonth(e.target.value)}
               />
             </label>
-            <label style={styles.field}>
-              <span style={styles.fieldLabel}>
+            <label className="field">
+              <span className="field-label">
                 Maximum demand (kW){t.demandRate === 0 ? " — n/a for this TOU" : ""}
               </span>
               <input
-                style={styles.input}
+                className="input"
                 type="number"
                 step="0.001"
                 min="0"
@@ -793,13 +821,13 @@ function Calculator({ session }) {
             </label>
           </div>
 
-          <div style={styles.meterRow}>
-            <label style={styles.field}>
-              <span style={styles.fieldLabel}>
+          <div className="meter-row">
+            <label className="field">
+              <span className="field-label">
                 Previous month's demand reading (kW)
               </span>
               <input
-                style={styles.input}
+                className="input"
                 type="number"
                 step="0.001"
                 min="0"
@@ -807,12 +835,12 @@ function Calculator({ session }) {
                 onChange={(e) => setPrevMaxDemandReading(e.target.value)}
               />
             </label>
-            <label style={styles.field}>
-              <span style={styles.fieldLabel}>
+            <label className="field">
+              <span className="field-label">
                 Previous month's demand billed (kW)
               </span>
               <input
-                style={styles.input}
+                className="input"
                 type="number"
                 step="0.001"
                 min="0"
@@ -821,56 +849,56 @@ function Calculator({ session }) {
               />
             </label>
           </div>
-          <div style={styles.validationLine}>
+          <div className="validation-line">
             Defaults to last month's stored history (if available) — editable.
           </div>
 
-          <div style={styles.validationLine}>
+          <div className="validation-line">
             Minimum plausible demand = kWh ÷ (days × 24h) = {derivedKWh.toLocaleString()} ÷{" "}
             {hours} = <b>{minDemand.toFixed(3)} kW</b>
           </div>
           {t.demandRate > 0 && (
             demandTooLow ? (
-              <div style={styles.warnBad}>
+              <div className="warn-bad">
                 ⚠ Entered demand ({demandVal.toFixed(3)} kW) is below the minimum plausible
                 average demand for this consumption. Check your reading.
               </div>
             ) : (
-              <div style={styles.warnOk}>✓ Demand entry is consistent with consumption.</div>
+              <div className="warn-ok">✓ Demand entry is consistent with consumption.</div>
             )
           )}
         </section>
 
         {/* ---------------- BILL PANEL ---------------- */}
-        <section style={styles.billWrap}>
-          <div style={styles.billTear} />
-          <div style={styles.bill}>
-            <div style={styles.billHeadRow}>
-              <div style={styles.billLogo}>⚡ BOTSWANA POWER CORPORATION</div>
-              <div style={styles.billTag}>TAX INVOICE (simulated)</div>
+        <section className="bill-wrap">
+          <div className="bill-tear" />
+          <div className="bill">
+            <div className="bill-head-row">
+              <div className="bill-logo">⚡ BOTSWANA POWER CORPORATION</div>
+              <div className="bill-tag">TAX INVOICE (simulated)</div>
             </div>
-            <div style={styles.billMeta}>
+            <div className="bill-meta">
               <div>Tariff category: <b>{t.code} — {t.label}</b></div>
               <div>Billing days: <b>{daysInBillingMonth}</b></div>
               {mode === "meter" && <div>Meter #: <b>{meterNo}</b></div>}
             </div>
 
-            <table style={styles.billTable}>
+            <table className="bill-table">
               <tbody>
                 {mode === "meter" && (
-                  <tr style={styles.billRowMuted}>
+                  <tr className="bill-row-muted">
                     <td>METER {meterNo} — OPENING {opening} · CLOSING {closing} · MULT {multiplier}</td>
-                    <td style={styles.billNum}>{derivedKWh.toLocaleString()} kWh</td>
+                    <td className="bill-num">{derivedKWh.toLocaleString()} kWh</td>
                   </tr>
                 )}
                 <tr>
                   <td>ELECTRICITY CONSUMPTION</td>
-                  <td style={styles.billNum}>{derivedKWh.toLocaleString()} kWh</td>
+                  <td className="bill-num">{derivedKWh.toLocaleString()} kWh</td>
                 </tr>
                 {t.demandRate > 0 && (
                   <tr>
-                    <td>MAXIMUM DEMAND CHARGE ({billedDemand.toFixed(3)} kW billed × {exVat(t.demandRate).toFixed(4)})</td>
-                    <td style={styles.billNum}>{bill ? fmt(bill.demand) : "—"}</td>
+                    <td>DEMAND CHARGE ({demandVal.toFixed(3)} kW read · {billedDemand.toFixed(3)} kW billed × {exVat(t.demandRate).toFixed(4)})</td>
+                    <td className="bill-num">{bill ? fmt(bill.demand) : "—"}</td>
                   </tr>
                 )}
                 <tr>
@@ -880,61 +908,54 @@ function Calculator({ session }) {
                       ? `(tiered ≤/> ${t.tierLimit} kWh)`
                       : `(${exVat(t.energyRate).toFixed(4)}/kWh)`}
                   </td>
-                  <td style={styles.billNum}>{bill ? fmt(bill.energy) : "—"}</td>
+                  <td className="bill-num">{bill ? fmt(bill.energy) : "—"}</td>
                 </tr>
                 <tr>
                   <td>STANDING CHARGE</td>
-                  <td style={styles.billNum}>{bill ? fmt(bill.fixed) : "—"}</td>
+                  <td className="bill-num">{bill ? fmt(bill.fixed) : "—"}</td>
                 </tr>
-                <tr style={styles.billSubtotal}>
+                <tr className="bill-subtotal">
                   <td>SUBTOTAL OF CURRENT CHARGES</td>
-                  <td style={styles.billNum}>{bill ? fmt(bill.subtotal) : "—"}</td>
+                  <td className="bill-num">{bill ? fmt(bill.subtotal) : "—"}</td>
                 </tr>
                 <tr>
                   <td>VAT @ 14%</td>
-                  <td style={styles.billNum}>{bill ? fmt(bill.vat) : "—"}</td>
+                  <td className="bill-num">{bill ? fmt(bill.vat) : "—"}</td>
                 </tr>
                 <tr>
                   <td>NATIONAL STANDARD COST LEVY ({derivedKWh.toLocaleString()} kWh × P0.10)</td>
-                  <td style={styles.billNum}>{bill ? fmt(bill.levy) : "—"}</td>
+                  <td className="bill-num">{bill ? fmt(bill.levy) : "—"}</td>
                 </tr>
               </tbody>
             </table>
 
-            <div style={styles.billTotalRow}>
+            <div className="bill-total-row">
               <span>TOTAL AMOUNT INCLUDING VAT</span>
-              <span style={styles.billTotalVal}>{bill ? fmt(bill.total) : "—"}</span>
+              <span className="bill-total-val">{bill ? fmt(bill.total) : "—"}</span>
             </div>
           </div>
         </section>
       </div>
 
       {/* ---------------- CHART PANEL ---------------- */}
-      <section style={styles.panel}>
-        <h2 style={styles.panelTitle}>
-          Charge vs. {xAxisMode === "kwh" ? "Consumption" : "Maximum Demand"}
-        </h2>
+      <section className="panel">
+        <h2 className="panel-title">Charge vs. Consumption</h2>
 
-        <div style={styles.chartControls}>
-          <div style={styles.controlGroup}>
-            <span style={styles.controlLabel}>Tariff categories</span>
-            <div style={styles.chipRow}>
+        <div className="chart-controls">
+          <div className="control-group">
+            <span className="control-label">Tariff categories</span>
+            <div className="chip-row">
               {TOU_KEYS.map((k) => (
                 <label
                   key={k}
                   title={`${TARIFFS[k].code} — ${TARIFFS[k].label}`}
-                  style={{
-                    ...styles.chip,
-                    ...styles.chipCompact,
-                    borderColor: TOU_COLORS[k],
-                    background: selectedTOUs.includes(k) ? TOU_COLORS[k] + "22" : "transparent",
-                  }}
+                  className={`chip chip-compact${selectedTOUs.includes(k) ? " chip-checked" : ""}`}
+                  style={{ "--chip-color": TOU_COLORS[k] }}
                 >
                   <input
                     type="checkbox"
                     checked={selectedTOUs.includes(k)}
                     onChange={() => toggleTOU(k)}
-                    style={{ accentColor: TOU_COLORS[k] }}
                   />
                   {TARIFFS[k].code}
                 </label>
@@ -942,19 +963,16 @@ function Calculator({ session }) {
             </div>
           </div>
 
-          <div style={styles.controlGroup}>
-            <span style={styles.controlLabel}>Charge components</span>
-            <div style={styles.chipRow}>
+          <div className="control-group">
+            <span className="control-label">Charge components</span>
+            <div className="chip-row">
               {METRICS.map((m, i) => (
                 <React.Fragment key={m.key}>
-                  {i === 1 && <span style={styles.operatorSymbol}>=</span>}
-                  {i > 1 && <span style={styles.operatorSymbol}>+</span>}
+                  {i === 1 && <span className="operator-symbol">=</span>}
+                  {i > 1 && <span className="operator-symbol">+</span>}
                   <label
-                    style={{
-                      ...styles.chip,
-                      borderColor: "#6B7280",
-                      background: selectedMetrics.includes(m.key) ? "#6B728033" : "transparent",
-                    }}
+                    className={`chip${selectedMetrics.includes(m.key) ? " chip-checked" : ""}`}
+                    style={{ "--chip-color": "#6B7280" }}
                   >
                     <input
                       type="checkbox"
@@ -968,26 +986,8 @@ function Calculator({ session }) {
             </div>
           </div>
 
-          <div style={styles.controlGroup}>
-            <span style={styles.controlLabel}>X-axis variable</span>
-            <div style={styles.modeSwitch}>
-              <button
-                style={xAxisMode === "kwh" ? styles.modeBtnActive : styles.modeBtn}
-                onClick={() => setXAxisMode("kwh")}
-              >
-                kWh consumed
-              </button>
-              <button
-                style={xAxisMode === "demand" ? styles.modeBtnActive : styles.modeBtn}
-                onClick={() => setXAxisMode("demand")}
-              >
-                Maximum demand (kW)
-              </button>
-            </div>
-          </div>
-
-          <label style={styles.sliderField}>
-            <span style={styles.sliderLabel}>
+          <label className="slider-field">
+            <span className="slider-label">
               DM charge (demand assumption): {chartDemandKW.toFixed(1)} kW
             </span>
             <input
@@ -997,109 +997,91 @@ function Calculator({ session }) {
               step="0.5"
               value={chartDemandKW}
               onChange={(e) => setChartDemandKW(parseFloat(e.target.value))}
-              style={{ width: "100%" }}
-              disabled={xAxisMode === "demand"}
             />
-            {xAxisMode === "demand" && (
-              <span style={{ fontSize: 11, color: "#7C93AD" }}>
-                Not used in this mode — demand is already the X-axis variable.
-              </span>
-            )}
           </label>
 
-          {xAxisMode === "kwh" ? (
-            <label style={styles.sliderField}>
-              <span style={styles.sliderLabel}>
-                X-axis range (max kWh): {maxKWh.toLocaleString()} — demand held at{" "}
-                {chartDemandKW.toFixed(1)} kW
-              </span>
-              <input
-                type="range"
-                min="1000"
-                max="200000"
-                step="1000"
-                value={maxKWh}
-                onChange={(e) => setMaxKWh(parseInt(e.target.value))}
-                style={{ width: "100%" }}
-              />
-            </label>
-          ) : (
-            <label style={styles.sliderField}>
-              <span style={styles.sliderLabel}>
-                X-axis range (max kW): {maxDemandAxis.toLocaleString()} — kWh held at{" "}
-                {derivedKWh.toLocaleString()}
-              </span>
-              <input
-                type="range"
-                min="50"
-                max="2000"
-                step="10"
-                value={maxDemandAxis}
-                onChange={(e) => setMaxDemandAxis(parseInt(e.target.value))}
-                style={{ width: "100%" }}
-              />
-            </label>
-          )}
-
-          <label style={styles.sliderField}>
-            <span style={styles.sliderLabel}>
-              Y-axis range (max Pula): {yAxisMax.toLocaleString()}
+          <label className="slider-field">
+            <span className="slider-label">
+              X-axis range (max kWh): {formatK(maxKWh)} — demand held at{" "}
+              {chartDemandKW.toFixed(1)} kW
             </span>
             <input
               type="range"
-              min="1000"
-              max="500000"
-              step="1000"
-              value={yAxisMax}
-              onChange={(e) => setYAxisMax(parseInt(e.target.value))}
-              style={{ width: "100%" }}
+              min="300"
+              max="100000"
+              step="100"
+              value={maxKWh}
+              onChange={(e) => setMaxKWh(parseInt(e.target.value))}
             />
           </label>
 
         </div>
 
-        <div style={{ width: "100%", height: 420, marginTop: 16 }}>
-          <ResponsiveContainer>
-            <LineChart data={chartData} margin={{ top: 10, right: 24, left: 8, bottom: 8 }}>
-              <CartesianGrid stroke="#2A3B52" strokeDasharray="3 3" />
-              <XAxis
-                dataKey="x"
-                tick={{ fill: "#9FB3C8", fontSize: 12, fontFamily: "IBM Plex Mono, monospace" }}
-                stroke="#3A4D66"
-                tickFormatter={(v) => Math.round(v).toLocaleString()}
-                allowDecimals={false}
-                label={{
-                  value: xAxisMode === "kwh" ? "kWh consumed" : "Maximum demand (kW)",
-                  position: "insideBottom",
-                  offset: -4,
-                  fill: "#9FB3C8",
-                }}
+        <div style={{ display: "flex", gap: 12, marginTop: 20 }}>
+          <div className="y-slider-wrap">
+            <span className="y-slider-cap">{formatK(yAxisMax)}</span>
+            <div className="y-slider-track">
+              <input
+                type="range"
+                className="slider-vertical"
+                min="500"
+                max="200000"
+                step="500"
+                value={yAxisMax}
+                onChange={(e) => setYAxisMax(parseInt(e.target.value))}
               />
-              <YAxis
-                domain={[0, yAxisMax]}
-                allowDataOverflow={true}
-                tick={{ fill: "#9FB3C8", fontSize: 12, fontFamily: "IBM Plex Mono, monospace" }}
-                stroke="#3A4D66"
-                label={{ value: "Pula (P)", angle: -90, position: "insideLeft", fill: "#9FB3C8" }}
-              />
-              <Tooltip
-                contentStyle={{
-                  background: "#111D2E",
-                  border: "1px solid #3A4D66",
-                  fontFamily: "IBM Plex Mono, monospace",
-                  fontSize: 12,
-                }}
-                labelStyle={{ color: "#F2A93B" }}
-                formatter={(v, name) => [fmt(v), name]}
-              />
-              <Legend wrapperStyle={{ fontFamily: "IBM Plex Sans, sans-serif", fontSize: 12 }} />
-              {selectedTOUs.flatMap((tk) =>
-                selectedMetrics.map((m) => (
-                  <Line
-                    key={`${tk}__${m}`}
-                    type="monotone"
-                    dataKey={`${tk}__${m}`}
-                    name={`${TARIFFS[tk].code} · ${METRICS.find((x) => x.key === m).label}`}
+            </div>
+          </div>
+
+          <div style={{ width: "100%", height: 420 }}>
+            <ResponsiveContainer>
+              <LineChart data={chartData} margin={{ top: 10, right: 24, left: 4, bottom: 30 }}>
+                <CartesianGrid stroke="#D8DFE8" strokeDasharray="3 3" />
+                <XAxis
+                  dataKey="x"
+                  tick={{ fill: "#5A6B85", fontSize: 12, fontFamily: "IBM Plex Mono, monospace" }}
+                  stroke="#B9C5D4"
+                  tickFormatter={formatK}
+                  allowDecimals={false}
+                  label={{
+                    value: "kWh consumed",
+                    position: "insideBottom",
+                    offset: -8,
+                    fill: "#5A6B85",
+                  }}
+                />
+                <YAxis
+                  domain={[0, yAxisMax]}
+                  allowDataOverflow={true}
+                  tick={{ fill: "#5A6B85", fontSize: 12, fontFamily: "IBM Plex Mono, monospace" }}
+                  stroke="#B9C5D4"
+                  tickFormatter={formatK}
+                  label={{ value: "Pula (P)", angle: -90, position: "insideLeft", fill: "#5A6B85" }}
+                />
+                <Tooltip
+                  contentStyle={{
+                    background: "#FFFFFF",
+                    border: "1px solid #D8DFE8",
+                    borderRadius: 8,
+                    fontFamily: "IBM Plex Mono, monospace",
+                    fontSize: 12,
+                    boxShadow: "0 8px 24px -12px rgba(13,30,52,0.25)",
+                  }}
+                  labelStyle={{ color: "#1D3656", fontWeight: 600 }}
+                  formatter={(v, name) => [fmt(v), name]}
+                />
+                <Legend
+                  verticalAlign="top"
+                  height={32}
+                  wrapperStyle={{ fontFamily: "DM Sans, sans-serif", fontSize: 12 }}
+                />
+                {selectedTOUs.flatMap((tk) =>
+                  selectedMetrics.map((m) => (
+                    <Line
+                      key={`${tk}__${m}`}
+                      type="monotone"
+                      dataKey={`${tk}__${m}`}
+                      name={`${TARIFFS[tk].code} · ${METRICS.find((x) => x.key === m).label}`}
                     stroke={TOU_COLORS[tk]}
                     strokeDasharray={METRICS.find((x) => x.key === m).dash}
                     dot={false}
@@ -1107,12 +1089,13 @@ function Calculator({ session }) {
                   />
                 ))
               )}
-            </LineChart>
-          </ResponsiveContainer>
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
         </div>
       </section>
 
-      <footer style={styles.footer}>
+      <footer className="footer">
         Rates ex-VAT are derived as (published VAT-inclusive rate) ÷ 1.14. VAT (14%) applies to
         Fixed + Electricity + Demand charges only; the P0.10/kWh National Standard Cost Levy is
         added after VAT. For reference only — not an official BPC invoice.
@@ -1122,285 +1105,5 @@ function Calculator({ session }) {
 }
 
 const fontImports = `
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=DM+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 `;
-
-const styles = {
-  authWrap: {
-    fontFamily: "'IBM Plex Sans', sans-serif",
-    background: "#0C1622",
-    color: "#E7EEF6",
-    minHeight: "100vh",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 24,
-  },
-  authCard: {
-    background: "#111D2E",
-    border: "1px solid #24374F",
-    borderRadius: 14,
-    padding: 28,
-    width: 360,
-    maxWidth: "100%",
-  },
-  app: {
-    fontFamily: "'IBM Plex Sans', sans-serif",
-    background: "#0C1622",
-    color: "#E7EEF6",
-    minHeight: "100%",
-    padding: "28px 28px 60px",
-    boxSizing: "border-box",
-  },
-  header: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "flex-end",
-    borderBottom: "1px solid #24374F",
-    paddingBottom: 16,
-    marginBottom: 24,
-    flexWrap: "wrap",
-    gap: 12,
-  },
-  headerLeft: { display: "flex", alignItems: "center", gap: 14 },
-  boltMark: {
-    width: 44,
-    height: 44,
-    borderRadius: 10,
-    background: "linear-gradient(135deg,#6B3FA0,#8A6FD6)",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    fontSize: 22,
-    boxShadow: "0 0 0 1px #3A2A55, 0 6px 18px -6px #6B3FA0AA",
-  },
-  eyebrow: {
-    fontFamily: "'IBM Plex Mono', monospace",
-    fontSize: 11,
-    letterSpacing: "0.14em",
-    color: "#F2A93B",
-    marginBottom: 2,
-  },
-  h1: {
-    fontFamily: "'Space Grotesk', sans-serif",
-    fontSize: 26,
-    margin: 0,
-    fontWeight: 700,
-    color: "#F4F7FB",
-  },
-  headerRight: {
-    fontFamily: "'IBM Plex Mono', monospace",
-    fontSize: 11,
-    letterSpacing: "0.08em",
-    color: "#7C93AD",
-  },
-  grid: {
-    display: "grid",
-    gridTemplateColumns: "1.15fr 1fr",
-    gap: 20,
-    alignItems: "start",
-    marginBottom: 20,
-  },
-  panel: {
-    background: "#111D2E",
-    border: "1px solid #24374F",
-    borderRadius: 14,
-    padding: 22,
-    marginBottom: 20,
-  },
-  panelTitle: {
-    fontFamily: "'Space Grotesk', sans-serif",
-    fontSize: 16,
-    margin: "0 0 16px",
-    color: "#F4F7FB",
-  },
-  modeSwitch: { display: "flex", gap: 8, marginBottom: 16 },
-  modeBtn: {
-    flex: 1,
-    padding: "9px 10px",
-    borderRadius: 4,
-    border: "1px solid #2E4260",
-    background: "transparent",
-    color: "#9FB3C8",
-    fontFamily: "'IBM Plex Sans', sans-serif",
-    fontSize: 13,
-    cursor: "pointer",
-  },
-  modeBtnActive: {
-    flex: 1,
-    padding: "9px 10px",
-    borderRadius: 4,
-    border: "1px solid #8A6FD6",
-    background: "#8A6FD62A",
-    color: "#F4F7FB",
-    fontFamily: "'IBM Plex Sans', sans-serif",
-    fontSize: 13,
-    cursor: "pointer",
-    fontWeight: 600,
-  },
-  field: { display: "block", marginBottom: 14 },
-  sliderField: { display: "block", marginBottom: 6 },
-  sliderLabel: {
-    display: "block",
-    fontSize: 12,
-    color: "#9FB3C8",
-    marginBottom: 2,
-    fontFamily: "'IBM Plex Mono', monospace",
-  },
-  fieldLabel: {
-    display: "block",
-    fontSize: 12,
-    color: "#9FB3C8",
-    marginBottom: 6,
-    fontFamily: "'IBM Plex Mono', monospace",
-  },
-  input: {
-    width: "100%",
-    boxSizing: "border-box",
-    padding: "9px 10px",
-    borderRadius: 8,
-    border: "1px solid #2E4260",
-    background: "#0C1622",
-    color: "#F4F7FB",
-    fontFamily: "'IBM Plex Mono', monospace",
-    fontSize: 13.5,
-    outline: "none",
-  },
-  meterRow: {
-    display: "grid",
-    gridTemplateColumns: "1fr 1fr",
-    gap: 10,
-    marginBottom: 4,
-  },
-  derivedKwh: {
-    gridColumn: "1 / -1",
-    fontFamily: "'IBM Plex Mono', monospace",
-    fontSize: 12.5,
-    color: "#F2A93B",
-    background: "#F2A93B14",
-    border: "1px dashed #F2A93B55",
-    borderRadius: 8,
-    padding: "8px 10px",
-  },
-  validationLine: {
-    fontFamily: "'IBM Plex Mono', monospace",
-    fontSize: 12,
-    color: "#9FB3C8",
-    marginTop: 4,
-  },
-  warnBad: {
-    marginTop: 8,
-    fontSize: 12.5,
-    color: "#FCA5A5",
-    background: "#E8546A1A",
-    border: "1px solid #E8546A55",
-    borderRadius: 8,
-    padding: "8px 10px",
-  },
-  warnOk: {
-    marginTop: 8,
-    fontSize: 12.5,
-    color: "#B7D65B",
-    background: "#B7D65B14",
-    border: "1px solid #B7D65B44",
-    borderRadius: 8,
-    padding: "8px 10px",
-  },
-  billWrap: { position: "relative" },
-  billTear: {
-    height: 10,
-    background:
-      "radial-gradient(circle at 6px 0, transparent 5px, #0C1622 5px) 0 0/12px 10px repeat-x",
-  },
-  bill: {
-    background: "#F4F1EA",
-    color: "#1B1330",
-    borderRadius: "0 0 14px 14px",
-    padding: "22px 22px 18px",
-    fontFamily: "'IBM Plex Mono', monospace",
-    boxShadow: "0 18px 40px -18px #00000090",
-  },
-  billHeadRow: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "baseline",
-    borderBottom: "2px solid #5B2C7A",
-    paddingBottom: 10,
-    marginBottom: 10,
-  },
-  billLogo: {
-    fontFamily: "'Space Grotesk', sans-serif",
-    fontWeight: 700,
-    fontSize: 14.5,
-    color: "#5B2C7A",
-    letterSpacing: "0.01em",
-  },
-  billTag: { fontSize: 10.5, color: "#7A6B8F", letterSpacing: "0.08em" },
-  billMeta: { fontSize: 12, color: "#4A3B5C", marginBottom: 12, lineHeight: 1.7 },
-  billTable: { width: "100%", borderCollapse: "collapse", fontSize: 12.5, textAlign: "left" },
-  billRowMuted: { color: "#8A7B9C" },
-  billNum: { textAlign: "right", whiteSpace: "nowrap", paddingLeft: 12 },
-  billSubtotal: { borderTop: "1px solid #C9BEDD", fontWeight: 600 },
-  billTotalRow: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginTop: 14,
-    paddingTop: 12,
-    borderTop: "2px solid #5B2C7A",
-    fontFamily: "'Space Grotesk', sans-serif",
-    fontSize: 15,
-    fontWeight: 700,
-    color: "#5B2C7A",
-  },
-  billTotalVal: { fontFamily: "'IBM Plex Mono', monospace", fontSize: 17 },
-  chartControls: { display: "flex", flexDirection: "column", gap: 14 },
-  controlGroup: {
-    display: "flex",
-    flexDirection: "row",
-    alignItems: "center",
-    flexWrap: "wrap",
-    gap: 12,
-  },
-  controlLabel: {
-    fontFamily: "'IBM Plex Mono', monospace",
-    fontSize: 11.5,
-    letterSpacing: "0.06em",
-    color: "#7C93AD",
-    whiteSpace: "nowrap",
-  },
-  chipRow: { display: "flex", flexWrap: "wrap", gap: 8 },
-  operatorSymbol: {
-    display: "flex",
-    alignItems: "center",
-    fontSize: 14,
-    fontWeight: 700,
-    color: "#9FB3C8",
-    padding: "0 2px",
-  },
-  chip: {
-    display: "flex",
-    alignItems: "center",
-    gap: 6,
-    padding: "6px 10px",
-    borderRadius: 4,
-    border: "1px solid",
-    fontSize: 12,
-    cursor: "pointer",
-    userSelect: "none",
-  },
-  chipCompact: {
-    fontFamily: "'IBM Plex Mono', monospace",
-    fontWeight: 600,
-    letterSpacing: "0.02em",
-    padding: "6px 12px",
-  },
-  footer: {
-    fontFamily: "'IBM Plex Mono', monospace",
-    fontSize: 11,
-    color: "#5A7089",
-    marginTop: 8,
-    lineHeight: 1.6,
-    maxWidth: 900,
-  },
-};
