@@ -122,7 +122,7 @@ const METRICS = [
   { key: "total", label: "Total", dash: "0" },
   { key: "energy", label: "Electricity charge", dash: "6 3" },
   { key: "demand", label: "Demand charge", dash: "2 3" },
-  { key: "fixed", label: "Fixed / Standing charge", dash: "8 4 2 4" },
+  { key: "fixed", label: "Fixed Charge", dash: "8 4 2 4" },
   { key: "levy", label: "Levy", dash: "1 4" },
 ];
 
@@ -407,7 +407,7 @@ function Calculator({ session }) {
   const [closing, setClosing] = useState("34618.00");
   const [multiplier, setMultiplier] = useState("30");
   const [tariffKey, setTariffKey] = useState("TOU7");
-  const [demandKW, setDemandKW] = useState("56.550");
+  const [demandKW, setDemandKW] = useState("0");
   const [billingMonth, setBillingMonth] = useState("2026-06");
   const [billingDate, setBillingDate] = useState("2026-06-17");
   const [prevMaxDemandReading, setPrevMaxDemandReading] = useState("52.100");
@@ -422,6 +422,7 @@ function Calculator({ session }) {
   const [xAxisMode, setXAxisMode] = useState("kwh"); // 'kwh' | 'demand'
   const [maxDemandAxis, setMaxDemandAxis] = useState(500);
   const [chartDemandKW, setChartDemandKW] = useState(50); // DM charge slider — demand (kW) assumption used when X-axis = kWh consumed
+  const [yAxisMax, setYAxisMax] = useState(50000); // vertical (Y-axis) range slider — Pula
 
   const derivedKWh =
     mode === "kwh"
@@ -436,6 +437,30 @@ function Calculator({ session }) {
   const hours = daysInBillingMonth * 24;
   const minDemand = derivedKWh / hours;
   const demandVal = Math.min(parseFloat(demandKW) || 0, MAX_DEMAND_LIMIT);
+
+  // Auto-suggest demand = kWh ÷ (24 × days in month) until the user types
+  // into the demand field themselves — after that, it's fully manual.
+  const demandTouchedRef = useRef(false);
+  useEffect(() => {
+    if (!demandTouchedRef.current) {
+      setDemandKW(minDemand > 0 ? minDemand.toFixed(3) : "0");
+    }
+  }, [minDemand]);
+
+  // Default the previous-month manual fields from the actual stored history
+  // (last entry = "our logic using previous 12 months"), once, without
+  // overwriting anything the user has since edited by hand.
+  const prevMonthDefaultsSynced = useRef(false);
+  useEffect(() => {
+    if (!prevMonthDefaultsSynced.current && mdHistory.length > 0) {
+      const sorted = [...mdHistory].sort((a, b) => (a.month < b.month ? 1 : a.month > b.month ? -1 : 0));
+      const last = sorted[0];
+      setPrevMaxDemandReading(String(last.reading));
+      setPrevMaxDemandBilled(String(last.billed));
+      prevMonthDefaultsSynced.current = true;
+    }
+  }, [mdHistory]);
+
   const chartDemandSynced = useRef(false);
   useEffect(() => {
     if (!chartDemandSynced.current && demandVal > 0) {
@@ -759,10 +784,45 @@ function Calculator({ session }) {
                 step="0.001"
                 min="0"
                 value={demandKW}
-                onChange={(e) => setDemandKW(e.target.value)}
+                onChange={(e) => {
+                  demandTouchedRef.current = true;
+                  setDemandKW(e.target.value);
+                }}
                 disabled={t.demandRate === 0}
               />
             </label>
+          </div>
+
+          <div style={styles.meterRow}>
+            <label style={styles.field}>
+              <span style={styles.fieldLabel}>
+                Previous month's demand reading (kW)
+              </span>
+              <input
+                style={styles.input}
+                type="number"
+                step="0.001"
+                min="0"
+                value={prevMaxDemandReading}
+                onChange={(e) => setPrevMaxDemandReading(e.target.value)}
+              />
+            </label>
+            <label style={styles.field}>
+              <span style={styles.fieldLabel}>
+                Previous month's demand billed (kW)
+              </span>
+              <input
+                style={styles.input}
+                type="number"
+                step="0.001"
+                min="0"
+                value={prevMaxDemandBilled}
+                onChange={(e) => setPrevMaxDemandBilled(e.target.value)}
+              />
+            </label>
+          </div>
+          <div style={styles.validationLine}>
+            Defaults to last month's stored history (if available) — editable.
           </div>
 
           <div style={styles.validationLine}>
@@ -885,22 +945,25 @@ function Calculator({ session }) {
           <div style={styles.controlGroup}>
             <span style={styles.controlLabel}>Charge components</span>
             <div style={styles.chipRow}>
-              {METRICS.map((m) => (
-                <label
-                  key={m.key}
-                  style={{
-                    ...styles.chip,
-                    borderColor: "#6B7280",
-                    background: selectedMetrics.includes(m.key) ? "#6B728033" : "transparent",
-                  }}
-                >
-                  <input
-                    type="checkbox"
-                    checked={selectedMetrics.includes(m.key)}
-                    onChange={() => toggleMetric(m.key)}
-                  />
-                  {m.label}
-                </label>
+              {METRICS.map((m, i) => (
+                <React.Fragment key={m.key}>
+                  {i === 1 && <span style={styles.operatorSymbol}>=</span>}
+                  {i > 1 && <span style={styles.operatorSymbol}>+</span>}
+                  <label
+                    style={{
+                      ...styles.chip,
+                      borderColor: "#6B7280",
+                      background: selectedMetrics.includes(m.key) ? "#6B728033" : "transparent",
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedMetrics.includes(m.key)}
+                      onChange={() => toggleMetric(m.key)}
+                    />
+                    {m.label}
+                  </label>
+                </React.Fragment>
               ))}
             </div>
           </div>
@@ -923,8 +986,8 @@ function Calculator({ session }) {
             </div>
           </div>
 
-          <label style={styles.field}>
-            <span style={styles.fieldLabel}>
+          <label style={styles.sliderField}>
+            <span style={styles.sliderLabel}>
               DM charge (demand assumption): {chartDemandKW.toFixed(1)} kW
             </span>
             <input
@@ -945,8 +1008,8 @@ function Calculator({ session }) {
           </label>
 
           {xAxisMode === "kwh" ? (
-            <label style={styles.field}>
-              <span style={styles.fieldLabel}>
+            <label style={styles.sliderField}>
+              <span style={styles.sliderLabel}>
                 X-axis range (max kWh): {maxKWh.toLocaleString()} — demand held at{" "}
                 {chartDemandKW.toFixed(1)} kW
               </span>
@@ -961,8 +1024,8 @@ function Calculator({ session }) {
               />
             </label>
           ) : (
-            <label style={styles.field}>
-              <span style={styles.fieldLabel}>
+            <label style={styles.sliderField}>
+              <span style={styles.sliderLabel}>
                 X-axis range (max kW): {maxDemandAxis.toLocaleString()} — kWh held at{" "}
                 {derivedKWh.toLocaleString()}
               </span>
@@ -977,6 +1040,22 @@ function Calculator({ session }) {
               />
             </label>
           )}
+
+          <label style={styles.sliderField}>
+            <span style={styles.sliderLabel}>
+              Y-axis range (max Pula): {yAxisMax.toLocaleString()}
+            </span>
+            <input
+              type="range"
+              min="1000"
+              max="500000"
+              step="1000"
+              value={yAxisMax}
+              onChange={(e) => setYAxisMax(parseInt(e.target.value))}
+              style={{ width: "100%" }}
+            />
+          </label>
+
         </div>
 
         <div style={{ width: "100%", height: 420, marginTop: 16 }}>
@@ -997,8 +1076,8 @@ function Calculator({ session }) {
                 }}
               />
               <YAxis
-                domain={["auto", "auto"]}
-                allowDataOverflow={false}
+                domain={[0, yAxisMax]}
+                allowDataOverflow={true}
                 tick={{ fill: "#9FB3C8", fontSize: 12, fontFamily: "IBM Plex Mono, monospace" }}
                 stroke="#3A4D66"
                 label={{ value: "Pula (P)", angle: -90, position: "insideLeft", fill: "#9FB3C8" }}
@@ -1160,6 +1239,14 @@ const styles = {
     fontWeight: 600,
   },
   field: { display: "block", marginBottom: 14 },
+  sliderField: { display: "block", marginBottom: 6 },
+  sliderLabel: {
+    display: "block",
+    fontSize: 12,
+    color: "#9FB3C8",
+    marginBottom: 2,
+    fontFamily: "'IBM Plex Mono', monospace",
+  },
   fieldLabel: {
     display: "block",
     fontSize: 12,
@@ -1250,7 +1337,7 @@ const styles = {
   },
   billTag: { fontSize: 10.5, color: "#7A6B8F", letterSpacing: "0.08em" },
   billMeta: { fontSize: 12, color: "#4A3B5C", marginBottom: 12, lineHeight: 1.7 },
-  billTable: { width: "100%", borderCollapse: "collapse", fontSize: 12.5 },
+  billTable: { width: "100%", borderCollapse: "collapse", fontSize: 12.5, textAlign: "left" },
   billRowMuted: { color: "#8A7B9C" },
   billNum: { textAlign: "right", whiteSpace: "nowrap", paddingLeft: 12 },
   billSubtotal: { borderTop: "1px solid #C9BEDD", fontWeight: 600 },
@@ -1283,6 +1370,14 @@ const styles = {
     whiteSpace: "nowrap",
   },
   chipRow: { display: "flex", flexWrap: "wrap", gap: 8 },
+  operatorSymbol: {
+    display: "flex",
+    alignItems: "center",
+    fontSize: 14,
+    fontWeight: 700,
+    color: "#9FB3C8",
+    padding: "0 2px",
+  },
   chip: {
     display: "flex",
     alignItems: "center",
